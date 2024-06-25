@@ -87,8 +87,8 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 
 dbname = conski_databussy()
-DBCollect = dbname['AmbilGan']
-cariBanyak = DBCollect.find({"Status": "belom"})
+DBCollect = dbname['dariPII']
+cariBanyak = DBCollect.find({"status": "112-4"})
 taskMakinBanyak = []
 for printBanyak in cariBanyak:
     print(printBanyak)
@@ -102,13 +102,15 @@ def tesInturnul() :
   global berhitung
 
   url = "http://127.0.0.1:8000/trigger_selenium"
+
   if berhitung >= len(taskMakinBanyak):
     scheduler.remove_all_jobs(jobstore=None)
     return
   
   inputUlang = {
-    "process_id": taskMakinBanyak[berhitung]['ID'],
-    "url": "http://updmember.pii.or.id/index.php"
+    "process_id": taskMakinBanyak[berhitung]['pid'],
+    "url": "http://updmember.pii.or.id/index.php",
+    "status" : ['status']
   }
   
   payload = json.dumps(inputUlang)
@@ -119,10 +121,9 @@ def tesInturnul() :
   response = requests.request("POST", url, headers=headers, data=payload)
   DBWrite = dbname['LatiahDB']
   catatanDB = {
-      "ID" : inputUlang['process_id'],
+      "pid" : inputUlang['process_id'],
       "Timestamp" : datetime.now(),
-      "Status" : "kali ini dicoba ke sekian "+ str(berhitung +1)
-  }
+      "status" : "proses nomor urut "+ str(berhitung +1) + "diubah menjadi 112-5"}
 
   DBWrite.insert_one(catatanDB)
 
