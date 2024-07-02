@@ -5,6 +5,18 @@ import random
 from paho.mqtt import client as mqtt_client
 from flask_mqtt import Mqtt as mqttFlask
 
+
+from pymongo import MongoClient
+
+
+from datetime import datetime
+import time
+import os
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+import json
+
 # run : python pahoSub.py
 # pip install --upgrade setuptools
 
@@ -15,6 +27,23 @@ topic = "python/mqtt/TESTBrokerBaruBro"
 client_id = f'subscribe-{random.randint(0, 100)}'
 # username = 'emqx'
 # password = 'public'
+
+
+def connectKeDatab():
+                  linkDB = "mongodb://dbusr:dbusrpasswd@192.168.195.203:27017/backend?authSource=admin&w=1"
+                  dbClient = MongoClient(linkDB)
+                  return dbClient['piiclone']
+
+def cariDiDatab(msg):
+    DBKoleksi = connectKeDatab()
+    DBTampung = DBKoleksi['form_penilaian']
+    TASKCari = DBTampung.find({"pid": msg})
+    TASKAntri = []
+    for TASKkonfirm in TASKCari:
+        print(TASKkonfirm)
+        TASKAntri.append(TASKkonfirm)
+
+    
 
 
 def connect_mqtt() -> mqtt_client:
@@ -34,7 +63,10 @@ def connect_mqtt() -> mqtt_client:
 
 def subscribe(client: mqtt_client):
     def on_message(client, userdata, msg):
-        print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+        print(f"RECEIVED `{msg.payload.decode()}` FROM `{msg.topic}` TOPIC")
+        meseg = json.loads(msg.payload.decode())
+        print("NEW TASK! \n", meseg['pid'])
+        cariDiDatab(meseg['pid'])
 
     client.subscribe(topic)
     client.on_message = on_message
