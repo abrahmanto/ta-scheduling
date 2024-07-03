@@ -76,7 +76,7 @@ from pymongo import MongoClient
 def conski_databussy():
                   linkDB = "mongodb://dbusr:dbusrpasswd@192.168.195.203:27017/backend?authSource=admin&w=1"
                   dbClient = MongoClient(linkDB)
-                  return dbClient['akuCoba']
+                  return dbClient['piiclone']
 
 
 
@@ -86,14 +86,6 @@ import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-dbname = conski_databussy()
-DBCollect = dbname['dariPII']
-cariBanyak = DBCollect.find({"status": "112-4"})
-taskMakinBanyak = []
-for printBanyak in cariBanyak:
-    print(printBanyak)
-    taskMakinBanyak.append(printBanyak)
-
 berhitung = 0
 
 def tesInturnul() :
@@ -101,13 +93,22 @@ def tesInturnul() :
   import json
   global berhitung
 
-  url = "http://127.0.0.1:8000/trigger_selenium"
+  url = "http://127.0.0.1:8000/trigger_selenium" #run hafifis.py
+
+  dbname = conski_databussy()
+  DBCollect = dbname['form_penilaian']
+  cariBanyak = DBCollect.find({"status": "111-0"})
+  taskMakinBanyak = []
+  for printBanyak in cariBanyak:
+      print("Current Task: ", printBanyak['pid'])
+      taskMakinBanyak.append(printBanyak)
+  print(datetime.now)
 
   if berhitung >= len(taskMakinBanyak):
     scheduler.remove_all_jobs(jobstore=None)
     return
   
-  inputUlang = {
+  inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
     "process_id": taskMakinBanyak[berhitung]['pid'],
     "url": "http://updmember.pii.or.id/index.php",
     "status" : ['status']
@@ -119,15 +120,17 @@ def tesInturnul() :
   }
 
   response = requests.request("POST", url, headers=headers, data=payload)
-  DBWrite = dbname['LatiahDB']
+  DB2 = dbClient['akuCoba']
+  DBWrite = dbname['temp_logigiging'] #tulis di DB logging
   catatanDB = {
       "pid" : inputUlang['process_id'],
       "Timestamp" : datetime.now(),
-      "status" : "proses nomor urut "+ str(berhitung +1) + "diubah menjadi 112-5"}
-
+      "status" : "proses nomor urut "+ str(berhitung +1) + " diubah menjadi 112-1"}
   DBWrite.insert_one(catatanDB)
 
-  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"Status":"selamat dan sukses" }})
+  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"111-9" }}) 
+  #replace di DB semula biar ngerjainnya ga loop
+
   berhitung = berhitung + 1
 
   return (inputUlang)
@@ -138,18 +141,15 @@ if __name__ == '__main__':
   scheduler.add_job(tesInturnul, 'interval', seconds=15)
   scheduler.print_jobs()
   scheduler.start()
+  joblis = scheduler.get_jobs()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
   
   try:
       # This is here to simulate application activity (which keeps the main thread alive).
     while True:
-        time.sleep(60 * 30)
-        if berhitung < len(taskMakinBanyak):
-          scheduler.print_jobs()
-          scheduler.add_job(tesInturnul, 'interval', minutes=5)
-          scheduler.print_jobs()
-        # if berhitung >= len(taskMakinBanyak):
-        #   break
+        time.sleep(10)
+        if berhitung > len(joblis):
+          break
   except (KeyboardInterrupt, SystemExit):
         # Not strictly necessary if daemonic mode is enabled but should be done if possible
     scheduler.shutdown()
