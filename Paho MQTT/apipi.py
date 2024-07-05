@@ -69,20 +69,16 @@
 
   # print(response.text)
 
-
-
-from pymongo import MongoClient
-
-def conski_databussy():
-                  linkDB = "mongodb://dbusr:dbusrpasswd@192.168.195.203:27017/backend?authSource=admin&w=1"
-                  dbClient = MongoClient(linkDB)
-                  return dbClient['piiclone']
-
-
-
 from datetime import datetime
 import time
 import os
+
+from pymongo import MongoClient
+
+def getDBClient():
+                  linkDB = "mongodb://dbusr:dbusrpasswd@192.168.195.203:27017/backend?authSource=admin&w=1"
+                  dbClient = MongoClient(linkDB)
+                  return dbClient
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -95,16 +91,27 @@ def tesInturnul() :
 
   url = "http://127.0.0.1:8000/trigger_selenium" #run hafifis.py
 
-  dbname = conski_databussy()
-  DBCollect = dbname['form_penilaian']
+
+    # variabel dbClient nyimpen client balikan dari getDBClient()
+  dbClient = getDBClient()
+  # variabel piiCloneDB nyimpen database piiclone. Jadi dari variabel client sebelumnya, diakses database piiclone pake cara dbClient["piiclone"]
+  piiCloneDB = dbClient["piiclone"]
+  # variabel akuCobaDB nyimpen database akuCoba.
+  akuCobaDB = dbClient["akuCoba"]
+
+  DBCollect = piiCloneDB['form_penilaian']
+  DBWrite = akuCobaDB['LatiahDB']
+
+
   cariBanyak = DBCollect.find({"status": "111-0"})
   taskMakinBanyak = []
   for printBanyak in cariBanyak:
       print("Current Task: ", printBanyak['pid'])
       taskMakinBanyak.append(printBanyak)
-  print(datetime.now)
+  print("task start time :", datetime.now(), "\n")
 
-  if berhitung >= len(taskMakinBanyak):
+
+  if berhitung >= len(taskMakinBanyak): # soft stop kalo udahh kelar semua kerjaan
     scheduler.remove_all_jobs(jobstore=None)
     return
   
@@ -120,39 +127,45 @@ def tesInturnul() :
   }
 
   response = requests.request("POST", url, headers=headers, data=payload)
-  DB2 = dbClient['akuCoba']
-  DBWrite = dbname['temp_logigiging'] #tulis di DB logging
   catatanDB = {
       "pid" : inputUlang['process_id'],
       "Timestamp" : datetime.now(),
-      "status" : "proses nomor urut "+ str(berhitung +1) + " diubah menjadi 112-1"}
+      "status" : "proses nomor urut "+ str(berhitung +1) + " diubah menjadi 111-999"}
+  
   DBWrite.insert_one(catatanDB)
-
-  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"111-9" }}) 
+  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"999-9" }}) 
   #replace di DB semula biar ngerjainnya ga loop
 
+  print("Task ", taskMakinBanyak[berhitung]['pid'], " done")
+  print(time.ctime())
+  
   berhitung = berhitung + 1
+  return inputUlang
 
-  return (inputUlang)
 
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
   scheduler.add_job(tesInturnul, 'interval', seconds=15)
   scheduler.print_jobs()
-  scheduler.start()
   joblis = scheduler.get_jobs()
+  scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
   
   try:
-      # This is here to simulate application activity (which keeps the main thread alive).
     while True:
         time.sleep(10)
-        if berhitung > len(joblis):
-          break
-  except (KeyboardInterrupt, SystemExit):
-        # Not strictly necessary if daemonic mode is enabled but should be done if possible
-    scheduler.shutdown()
 
-# cari cara biar scheduler bisa standby dan kerjain task yg ditambahin belakangan
-#coba cari logic garis besar cara biar si scheduler bisa di trigger sesuai keinginan dan sekalinya nge-trigger, ngelakuin semua task yg ada di database
+        if berhitung >= len(joblis):  #pengganti taskMakinBanyak karena beda define
+          print("All queued job done! Standing by")
+          berhitung = 0
+          time.sleep(180)
+          print(time.ctime())
+
+          print("Resuming job")
+          time.sleep(10)
+          print(time.ctime())
+          scheduler.add_job(tesInturnul, 'interval', seconds=15)
+
+  except (KeyboardInterrupt, SystemExit):
+    scheduler.shutdown()
