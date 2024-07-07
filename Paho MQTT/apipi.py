@@ -103,7 +103,8 @@ def tesInturnul() :
   DBWrite = akuCobaDB['LatiahDB']
 
 
-  cariBanyak = DBCollect.find({"status": "111-0"})
+  # cariBanyak = DBCollect.find({"status": "111-0"}) #normal
+  cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
   taskMakinBanyak = []
   for printBanyak in cariBanyak:
       print("Current Task: ", printBanyak['pid'])
@@ -111,8 +112,9 @@ def tesInturnul() :
   print("task start time :", datetime.now(), "\n")
 
 
-  if berhitung >= len(taskMakinBanyak): # soft stop kalo udahh kelar semua kerjaan
-    scheduler.remove_all_jobs(jobstore=None)
+  if berhitung > len(taskMakinBanyak): # soft stop kalo udahh kelar semua kerjaan
+    scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
+    print("clearing task list", "\n")
     return
   
   inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
@@ -133,22 +135,23 @@ def tesInturnul() :
       "status" : "proses nomor urut "+ str(berhitung +1) + " diubah menjadi 111-999"}
   
   DBWrite.insert_one(catatanDB)
-  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"999-9" }}) 
+  # DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"999-9" }}) #normal
+  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"111-0" }}) #reset run
   #replace di DB semula biar ngerjainnya ga loop
 
-  print("Task ", taskMakinBanyak[berhitung]['pid'], " done")
-  print(time.ctime())
+  print("TASK", taskMakinBanyak[berhitung]['pid'], "DONE")
+  print("COMPLETION TIME:", time.ctime(), "\n")
   
-  berhitung = berhitung + 1
-  return inputUlang
+  berhitung  += 1
+  return taskMakinBanyak
 
 
 
 if __name__ == '__main__':
+  taskMakinBanyak = tesInturnul()
   scheduler = BackgroundScheduler()
   scheduler.add_job(tesInturnul, 'interval', seconds=15)
   scheduler.print_jobs()
-  joblis = scheduler.get_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
   
@@ -156,7 +159,10 @@ if __name__ == '__main__':
     while True:
         time.sleep(10)
 
-        if berhitung >= len(joblis):  #pengganti taskMakinBanyak karena beda define
+        
+        limiter = len(taskMakinBanyak)
+        if berhitung > limiter:  #pengganti taskMakinBanyak karena beda define
+          time.sleep(10)
           print("All queued job done! Standing by")
           berhitung = 0
           time.sleep(180)
@@ -166,6 +172,5 @@ if __name__ == '__main__':
           time.sleep(10)
           print(time.ctime())
           scheduler.add_job(tesInturnul, 'interval', seconds=15)
-
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
