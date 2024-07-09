@@ -92,7 +92,7 @@ def tesInturnul() :
   url = "http://127.0.0.1:8000/trigger_selenium" #run hafifis.py
 
 
-    # variabel dbClient nyimpen client balikan dari getDBClient()
+  # variabel dbClient nyimpen client balikan dari getDBClient()
   dbClient = getDBClient()
   # variabel piiCloneDB nyimpen database piiclone. Jadi dari variabel client sebelumnya, diakses database piiclone pake cara dbClient["piiclone"]
   piiCloneDB = dbClient["piiclone"]
@@ -103,8 +103,8 @@ def tesInturnul() :
   DBWrite = akuCobaDB['LatiahDB']
 
 
-  # cariBanyak = DBCollect.find({"status": "111-0"}) #normal
-  cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
+  cariBanyak = DBCollect.find({"status": "111-0"}) #normal
+  # cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
   taskMakinBanyak = []
   for printBanyak in cariBanyak:
       print("Current Task: ", printBanyak['pid'])
@@ -112,9 +112,9 @@ def tesInturnul() :
   print("task start time :", datetime.now(), "\n")
 
 
-  if berhitung > len(taskMakinBanyak): # soft stop kalo udahh kelar semua kerjaan
-    scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
-    print("clearing task list", "\n")
+  if berhitung >= len(taskMakinBanyak): # soft stop kalo udah kelar semua kerjaan
+    # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
+    print("ALL TASK DONE", "\n")
     return
   
   inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
@@ -135,20 +135,16 @@ def tesInturnul() :
       "status" : "proses nomor urut "+ str(berhitung +1) + " diubah menjadi 111-999"}
   
   DBWrite.insert_one(catatanDB)
-  # DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"999-9" }}) #normal
-  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"111-0" }}) #reset run
+  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"999-9" }}) #normal
+  # DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"111-0" }}) #reset run
   #replace di DB semula biar ngerjainnya ga loop
-
-  print("TASK", taskMakinBanyak[berhitung]['pid'], "DONE")
-  print("COMPLETION TIME:", time.ctime(), "\n")
+  for limitInturnul in taskMakinBanyak:
+    print("TASK", taskMakinBanyak[berhitung]['pid'], "DONE")
+    print("COMPLETION TIME:", time.ctime(), "\n")
   
-  berhitung  += 1
-  return taskMakinBanyak
-
-
+  berhitung += 1
 
 if __name__ == '__main__':
-  taskMakinBanyak = tesInturnul()
   scheduler = BackgroundScheduler()
   scheduler.add_job(tesInturnul, 'interval', seconds=15)
   scheduler.print_jobs()
@@ -159,18 +155,27 @@ if __name__ == '__main__':
     while True:
         time.sleep(10)
 
+        dbClientBeta = getDBClient()
+        piiCloneDBBeta = dbClientBeta["piiclone"]
+        DBCollectBeta = piiCloneDBBeta['form_penilaian']
         
-        limiter = len(taskMakinBanyak)
-        if berhitung > limiter:  #pengganti taskMakinBanyak karena beda define
+        cariBanyakBeta = DBCollectBeta.find({"status": "111-0"}) #normal
+        # cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
+        taskMakinBanyakBeta = []
+        for printBanyakBeta in cariBanyakBeta:
+            taskMakinBanyakBeta.append(printBanyakBeta)
+        print("nyaaa", datetime.now(), "\n")
+
+        limiter = len(printBanyakBeta)
+        if berhitung > limiter:  #pengganti printBanyakBeta karena beda define
           time.sleep(10)
           print("All queued job done! Standing by")
-          berhitung = 0
           time.sleep(180)
           print(time.ctime())
 
           print("Resuming job")
           time.sleep(10)
           print(time.ctime())
-          scheduler.add_job(tesInturnul, 'interval', seconds=15)
+          
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
