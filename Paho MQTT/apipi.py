@@ -146,7 +146,7 @@ def tesInturnul() :
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
-  scheduler.add_job(tesInturnul, 'interval', seconds=15)
+  scheduler.add_job(tesInturnul, 'interval', seconds=30)
   scheduler.print_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
@@ -155,27 +155,28 @@ if __name__ == '__main__':
     while True:
         time.sleep(10)
 
-        dbClientBeta = getDBClient()
-        piiCloneDBBeta = dbClientBeta["piiclone"]
-        DBCollectBeta = piiCloneDBBeta['form_penilaian']
-        
-        cariBanyakBeta = DBCollectBeta.find({"status": "111-0"}) #normal
-        # cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
-        taskMakinBanyakBeta = []
-        for printBanyakBeta in cariBanyakBeta:
-            taskMakinBanyakBeta.append(printBanyakBeta)
-        print("nyaaa", datetime.now(), "\n")
+        # dbClientBeta = getDBClient()
+        # piiCloneDBBeta = dbClientBeta["piiclone"]
+        # DBCollectBeta = piiCloneDBBeta['form_penilaian']
 
-        limiter = len(printBanyakBeta)
-        if berhitung > limiter:  #pengganti printBanyakBeta karena beda define
-          time.sleep(10)
-          print("All queued job done! Standing by")
-          time.sleep(180)
-          print(time.ctime())
 
-          print("Resuming job")
-          time.sleep(10)
-          print(time.ctime())
+        # limiter = len(printBanyakBeta)
+        # if berhitung > limiter:  #pengganti printBanyakBeta karena beda define
+        #   time.sleep(10)
+        #   print("All queued job done! Standing by")
+        #   time.sleep(180)
+                  
+        #   cariBanyakBeta = DBCollectBeta.find({"status": "111-0"}) #normal
+        #   # cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
+        #   taskMakinBanyakBeta = []
+        #   for printBanyakBeta in cariBanyakBeta:
+        #       taskMakinBanyakBeta.append(printBanyakBeta)
+        #   print("nyaaa", datetime.now(), "\n")
+        #   print(time.ctime())
+
+        #   print("Resuming job")
+        #   time.sleep(10)
+        #   print(time.ctime())
           
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
