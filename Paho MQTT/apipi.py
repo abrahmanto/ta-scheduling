@@ -82,12 +82,12 @@ def getDBClient():
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-berhitung = 0
+batch = 0
 
 def tesInturnul() :
   import requests
   import json
-  global berhitung
+  global batch
 
   url = "http://127.0.0.1:8000/trigger_selenium" #run hafifis.py
 
@@ -103,80 +103,61 @@ def tesInturnul() :
   DBWrite = akuCobaDB['LatiahDB']
 
 
-  cariBanyak = DBCollect.find({"status": "111-0"}) #normal
-  # cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
-  taskMakinBanyak = []
+  berhitung = 0
+
+  # cariBanyak = DBCollect.find({"status": "111-0"}) #normal
+  cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
+
+
   for printBanyak in cariBanyak:
-      print("Current Task: ", printBanyak['pid'])
-      taskMakinBanyak.append(printBanyak)
-  print("task start time :", datetime.now(), "\n")
+    print("Current Task: ", printBanyak['pid'])
+    print("task start time :", datetime.now(), "\n")
 
+    if len(printBanyak) >= berhitung: # soft stop kalo udah kelar semua kerjaan
+      inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
+        "process_id": printBanyak['pid'],
+        "url": "http://updmember.pii.or.id/index.php",
+        "status" : ['status']
+      }
+    
+      payload = json.dumps(inputUlang)
+      headers = {
+        'Content-Type': 'application/json'
+      }
 
-  if berhitung >= len(taskMakinBanyak): # soft stop kalo udah kelar semua kerjaan
-    # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
-    print("ALL TASK DONE", "\n")
-    return
-  
-  inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
-    "process_id": taskMakinBanyak[berhitung]['pid'],
-    "url": "http://updmember.pii.or.id/index.php",
-    "status" : ['status']
-  }
-  
-  payload = json.dumps(inputUlang)
-  headers = {
-    'Content-Type': 'application/json'
-  }
+      response = requests.request("POST", url, headers=headers, data=payload)
+      catatanDB = {
+          "pid" : inputUlang['process_id'],
+          "Timestamp" : datetime.now(),
+          "status" : "proses batch "+str(batch+1)+" nomor urut "+ str(berhitung +1) + " diubah menjadi 111-999"}
+    
+      DBWrite.insert_one(catatanDB)
+      
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"999-9" }}) #normal
+      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-0" }}) #reset run
+      # replace di DB semula biar ngerjainnya ga loop
+      
+      print("TASK DONE", printBanyak['pid'])
+      print("COMPLETION TIME:", time.ctime(), "\n")      
+    else:
+      scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
+      print("ALL TASK DONE", "\n", time.ctime())
+      return
+    
+    berhitung+=1
 
-  response = requests.request("POST", url, headers=headers, data=payload)
-  catatanDB = {
-      "pid" : inputUlang['process_id'],
-      "Timestamp" : datetime.now(),
-      "status" : "proses nomor urut "+ str(berhitung +1) + " diubah menjadi 111-999"}
-  
-  DBWrite.insert_one(catatanDB)
-  DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"999-9" }}) #normal
-  # DBCollect.update_one({'_id':taskMakinBanyak[berhitung]['_id']}, {"$set":{"status":"111-0" }}) #reset run
-  #replace di DB semula biar ngerjainnya ga loop
-  for limitInturnul in taskMakinBanyak:
-    print("TASK", taskMakinBanyak[berhitung]['pid'], "DONE")
-    print("COMPLETION TIME:", time.ctime(), "\n")
-  
-  berhitung += 1
+  batch += 1
+
+    
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
-  scheduler.add_job(tesInturnul, 'interval', seconds=30)
+  scheduler.add_job(tesInturnul, 'interval', minutes=10)
   scheduler.print_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
-  
   try:
     while True:
-        time.sleep(10)
-
-        # dbClientBeta = getDBClient()
-        # piiCloneDBBeta = dbClientBeta["piiclone"]
-        # DBCollectBeta = piiCloneDBBeta['form_penilaian']
-
-
-        # limiter = len(printBanyakBeta)
-        # if berhitung > limiter:  #pengganti printBanyakBeta karena beda define
-        #   time.sleep(10)
-        #   print("All queued job done! Standing by")
-        #   time.sleep(180)
-                  
-        #   cariBanyakBeta = DBCollectBeta.find({"status": "111-0"}) #normal
-        #   # cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
-        #   taskMakinBanyakBeta = []
-        #   for printBanyakBeta in cariBanyakBeta:
-        #       taskMakinBanyakBeta.append(printBanyakBeta)
-        #   print("nyaaa", datetime.now(), "\n")
-        #   print(time.ctime())
-
-        #   print("Resuming job")
-        #   time.sleep(10)
-        #   print(time.ctime())
-          
+        time.sleep(3600)          
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
