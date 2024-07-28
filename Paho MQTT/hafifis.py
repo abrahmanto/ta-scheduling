@@ -20,8 +20,8 @@ async def trigger_selenium(req: terimaJSON):
         driver.maximize_window()
         driver.implicitly_wait(5)
         #input username
-        driver.find_element(By.ID, "email").send_keys("yosua@live.undip.ac.id")
-        driver.find_element(By.ID, "password").send_keys("insinyurj4y4")
+        driver.find_element(By.ID, "email").send_keys("EMAIL")
+        driver.find_element(By.ID, "password").send_keys("PASSWORD")
         
         #masuk login
         driver.find_element(By.ID, "m_login_signin_submit").click()
