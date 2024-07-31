@@ -69,6 +69,10 @@
 
   # print(response.text)
 
+# pip install requests
+# pip install APScheduler
+# pip install pymongo
+
 from datetime import datetime
 import time
 import os
@@ -76,9 +80,10 @@ import os
 from pymongo import MongoClient
 
 def getDBClient():
-                  linkDB = "mongodb://dbusr:dbusrpasswd@192.168.195.203:27017/backend?authSource=admin&w=1"
+                  linkDB = "mongodb://192.168.195.245:27017/"
                   dbClient = MongoClient(linkDB)
                   return dbClient
+
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -88,19 +93,20 @@ def tesInturnul() :
   import requests
   import json
   global batch
+  print('here')
 
-  url = "http://127.0.0.1:8000/trigger_selenium" #run hafifis.py
-
+  url = "http://127.0.0.1:8000/trigger_selenium" #run uvicorn:hafifis.app --reload
+  
 
   # variabel dbClient nyimpen client balikan dari getDBClient()
   dbClient = getDBClient()
   # variabel piiCloneDB nyimpen database piiclone. Jadi dari variabel client sebelumnya, diakses database piiclone pake cara dbClient["piiclone"]
-  piiCloneDB = dbClient["piiclone"]
+  piiCloneDB = dbClient["pii-reborn"]
   # variabel akuCobaDB nyimpen database akuCoba.
-  akuCobaDB = dbClient["akuCoba"]
+  akuCobaDB = dbClient["pii-loggers"]
 
   DBCollect = piiCloneDB['form_penilaian']
-  DBWrite = akuCobaDB['LatiahDB']
+  DBWrite = akuCobaDB['logigiging']
 
 
   berhitung = 0
@@ -139,10 +145,10 @@ def tesInturnul() :
       
       print("TASK DONE", printBanyak['pid'])
       print("COMPLETION TIME:", time.ctime(), "\n")      
-    else:
-      scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
-      print("ALL TASK DONE", "\n", time.ctime())
-      return
+    # else:
+      # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
+      # print("ALL TASK DONE", "\n", time.ctime())
+      # return
     
     berhitung+=1
 
@@ -152,12 +158,12 @@ def tesInturnul() :
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
-  scheduler.add_job(tesInturnul, 'interval', minutes=10)
+  scheduler.add_job(tesInturnul, 'interval', minutes=30)
   scheduler.print_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
   try:
     while True:
-        time.sleep(3600)          
+        time.sleep(5)          
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
