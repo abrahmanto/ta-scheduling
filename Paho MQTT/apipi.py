@@ -93,7 +93,6 @@ def tesInturnul() :
   import requests
   import json
   global batch
-  print('here')
 
   url = "http://127.0.0.1:8000/trigger_selenium" #run uvicorn:hafifis.app --reload
   
@@ -112,14 +111,22 @@ def tesInturnul() :
   berhitung = 0
 
   # cariBanyak = DBCollect.find({"status": "111-0"}) #normal
+  # AkuJumlahAwal = DBCollect.count_documents({"status": "111-0"}) #normal
   cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
+  AkuJumlahAwal = DBCollect.count_documents({"status": "999-9"}) #reset
+  print("\n starting queue: ",AkuJumlahAwal)
 
 
-  for printBanyak in cariBanyak:
-    print("Current Task: ", printBanyak['pid'])
-    print("task start time :", datetime.now(), "\n")
 
-    if len(printBanyak) >= berhitung: # soft stop kalo udah kelar semua kerjaan
+  if AkuJumlahAwal >= 10: #checkpoint nyalain
+    for printBanyak in cariBanyak:
+      
+      # AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-0"}) #normal
+      AkuJumlahBerjalan = DBCollect.count_documents({"status": "999-9"}) #reset
+
+      print("\n jumlah queue saat ini: ",AkuJumlahBerjalan)
+      print("Current Task: ", printBanyak['pid'])
+      print("task start time :", datetime.now(), "\n")
       inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
         "process_id": printBanyak['pid'],
         "url": "http://updmember.pii.or.id/index.php",
@@ -144,26 +151,32 @@ def tesInturnul() :
       # replace di DB semula biar ngerjainnya ga loop
       
       print("TASK DONE", printBanyak['pid'])
-      print("COMPLETION TIME:", time.ctime(), "\n")      
-    # else:
-      # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
-      # print("ALL TASK DONE", "\n", time.ctime())
-      # return
-    
-    berhitung+=1
+      print("COMPLETION TIME:", time.ctime(), "\n")
 
-  batch += 1
+      berhitung+=1
+      batch += 1
+
+      if AkuJumlahBerjalan <= 0:     
+        print("queue kelar, ngetem") 
+        return
+  else:
+    # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
+    print("\n queue belom penuh, lanjut ngetem", "\n", time.ctime())
+    return
+    
+
+
 
     
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
-  scheduler.add_job(tesInturnul, 'interval', minutes=30)
+  scheduler.add_job(tesInturnul, 'interval', minutes=5)
   scheduler.print_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
   try:
     while True:
-        time.sleep(5)          
+        time.sleep(10)          
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
