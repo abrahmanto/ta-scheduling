@@ -69,18 +69,26 @@
 
   # print(response.text)
 
+
 # pip install requests
 # pip install APScheduler
 # pip install pymongo
+# pip install psutil
 
 from datetime import datetime
 import time
 import os
-
+import requests
+import json
 from pymongo import MongoClient
+import psutil
+
 
 def getDBClient():
                   linkDB = "mongodb://192.168.195.245:27017/"
+                  # linkDB = "mongodb://192.168.195.83:27017/" #punya hafidz
+                  # linkDB = "mongodb://192.168.195.241:27017/" #punya naufal
+
                   dbClient = MongoClient(linkDB)
                   return dbClient
 
@@ -90,78 +98,99 @@ from apscheduler.schedulers.background import BackgroundScheduler
 batch = 0
 
 def tesInturnul() :
-  import requests
-  import json
+
   global batch
 
-  url = "http://127.0.0.1:8000/trigger_selenium" #run uvicorn:hafifis.app --reload
-  
+  # url = "http://127.0.0.1:8000/trigger_selenium" # uvicorn hafifis:app --reload
+  url = "http://127.0.0.1:8000/trigger-selenium" # uvicorn hafizui:app --reload (lebih baru)
+  # url = "http://192.168.195.83:8000/trigger-selenium" #external hafidz
+
+
+  # status 2 jenis = perlu dikerjain dan sukses dikerjain
 
   # variabel dbClient nyimpen client balikan dari getDBClient()
   dbClient = getDBClient()
   # variabel piiCloneDB nyimpen database piiclone. Jadi dari variabel client sebelumnya, diakses database piiclone pake cara dbClient["piiclone"]
   piiCloneDB = dbClient["pii-reborn"]
   # variabel akuCobaDB nyimpen database akuCoba.
-  akuCobaDB = dbClient["pii-loggers"]
+  # akuCobaDB = dbClient["pii-loggers"]
 
   DBCollect = piiCloneDB['form_penilaian']
-  DBWrite = akuCobaDB['logigiging']
+  DBWrite = piiCloneDB['query_log']
 
 
   berhitung = 0
 
-  # cariBanyak = DBCollect.find({"status": "111-0"}) #normal
-  # AkuJumlahAwal = DBCollect.count_documents({"status": "111-0"}) #normal
-  cariBanyak = DBCollect.find({"status": "999-9"}) #reset run
-  AkuJumlahAwal = DBCollect.count_documents({"status": "999-9"}) #reset
-  print("\n starting queue: ",AkuJumlahAwal)
+  cariBanyak = DBCollect.find({"status": "111-0"}) #normal 1 of 3
+  AkuJumlahAwal = DBCollect.count_documents({"status": "111-0"}) #normal
+  # cariBanyak = DBCollect.find({"status": "111-3"}) #reset run 1 of 3
+  # AkuJumlahAwal = DBCollect.count_documents({"status": "111-3"}) #reset
+  print("\njumlah dalam antrian saat ini: ",AkuJumlahAwal)
 
 
+  tesCepewu = psutil.cpu_percent(interval=1)
+  tesMemri = psutil.virtual_memory()
+  print(f"sebelum mulai sele\nCPU Usage: {tesCepewu}%")
+  print(f"Memory Usage: {tesMemri.percent}% \n")
 
-  if AkuJumlahAwal >= 10: #checkpoint nyalain
+
+  if cariBanyak >= 10: #starting condtition
     for printBanyak in cariBanyak:
       
-      # AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-0"}) #normal
-      AkuJumlahBerjalan = DBCollect.count_documents({"status": "999-9"}) #reset
+      AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-0"}) #normal 2 of 3
+      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-0" }}) #normal
+      # AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-3"}) #reset run 2 of 3
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-3" }}) #reset
 
-      print("\n jumlah queue saat ini: ",AkuJumlahBerjalan)
+      print("\njumlah dalam antrian saat ini: ",AkuJumlahBerjalan)
       print("Current Task: ", printBanyak['pid'])
       print("task start time :", datetime.now(), "\n")
-      inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search
+      inputUlang = { #buat baca hasil search, bisa pilih attribute hasil search, PAYLOAD kirim ke selenium
         "process_id": printBanyak['pid'],
         "url": "http://updmember.pii.or.id/index.php",
-        "status" : ['status']
+        "status" : ['status'],
+        "student_id":printBanyak['student_id']
       }
     
       payload = json.dumps(inputUlang)
       headers = {
         'Content-Type': 'application/json'
       }
-
+      
       response = requests.request("POST", url, headers=headers, data=payload)
-      catatanDB = {
+      printjeson = response.json()
+      print("\n",printjeson) #dapet abc
+      print(response, "\n") #dapet 200/500
+      status_code = response.status_code
+      print("Response Code:", status_code)  
+      catatanDB = { #simpan di collection logging
           "pid" : inputUlang['process_id'],
           "Timestamp" : datetime.now(),
-          "status" : "proses batch "+str(batch+1)+" nomor urut "+ str(berhitung +1) + " diubah menjadi 111-999"}
-    
+          "status" : "proses batch "+str(batch+1)+" nomor urut "+ str(berhitung +1),
+          "deskripsi" : printjeson,
+          "keterangan" : status_code}
+
       DBWrite.insert_one(catatanDB)
       
-      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"999-9" }}) #normal
-      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-0" }}) #reset run
+      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-3" }}) #normal 3 of 3
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-0" }}) #reset run 3 of 3
       # replace di DB semula biar ngerjainnya ga loop
       
       print("TASK DONE", printBanyak['pid'])
-      print("COMPLETION TIME:", time.ctime(), "\n")
+      print("COMPLETION TIME:", time.ctime())
 
       berhitung+=1
-      batch += 1
 
-      if AkuJumlahBerjalan <= 0:     
-        print("queue kelar, ngetem") 
+      if berhitung >= 15: #stopping condition
+        print("15 antrian pertama selesai") 
+        batch += 1
         return
+    
+
   else:
+    print("\nbatch diatas standar, menunggu jadwal berikutnya\n", time.ctime())
     # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
-    print("\n queue belom penuh, lanjut ngetem", "\n", time.ctime())
+    scheduler.print_jobs()
     return
     
 
@@ -171,12 +200,20 @@ def tesInturnul() :
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
-  scheduler.add_job(tesInturnul, 'interval', minutes=5)
+  scheduler.add_job(tesInturnul, 'interval', seconds=20)
   scheduler.print_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
   try:
     while True:
-        time.sleep(10)          
+      tesCepewu = psutil.cpu_percent(interval=15)
+      tesMemri = psutil.virtual_memory()
+      print(f"\nCPU Usage: {tesCepewu}%")
+      print(f"Memory Usage: {tesMemri.percent}% \n")
+      time.sleep(45)          
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
+
+
+
+
