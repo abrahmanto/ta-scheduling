@@ -85,6 +85,7 @@ import psutil
 
 
 def getDBClient():
+                  # linkDB = "mongodb://localhost:27017"
                   linkDB = "mongodb://192.168.195.245:27017/"
                   # linkDB = "mongodb://192.168.195.83:27017/" #punya hafidz
                   # linkDB = "mongodb://192.168.195.241:27017/" #punya naufal
@@ -112,35 +113,41 @@ def tesInturnul() :
   dbClient = getDBClient()
   # variabel piiCloneDB nyimpen database piiclone. Jadi dari variabel client sebelumnya, diakses database piiclone pake cara dbClient["piiclone"]
   piiCloneDB = dbClient["pii-reborn"]
+  DBWrite = piiCloneDB['query_log']
+  # piiCloneDB = dbClient["piiclone"] #deployable
+  # DBWrite = piiCloneDB['log_result'] #deployable
+
   # variabel akuCobaDB nyimpen database akuCoba.
   # akuCobaDB = dbClient["pii-loggers"]
 
   DBCollect = piiCloneDB['form_penilaian']
-  DBWrite = piiCloneDB['query_log']
 
-
+  
   berhitung = 0
+  
+  DBCollect.update_many({"status": "IN PROG 111-2"}, {"$set":{"status":"111-2" }}) #normalisasi form nyangkut
 
-  cariBanyak = DBCollect.find({"status": "111-0"}) #normal 1 of 3
-  AkuJumlahAwal = DBCollect.count_documents({"status": "111-0"}) #normal
+  cariBanyak = DBCollect.find({"status": "111-2"}) #normal 1 of 3
+  AkuJumlahAwal = DBCollect.count_documents({"status": "111-2"}) #normal
   # cariBanyak = DBCollect.find({"status": "111-3"}) #reset run 1 of 3
   # AkuJumlahAwal = DBCollect.count_documents({"status": "111-3"}) #reset
-  print("\njumlah dalam antrian saat ini: ",AkuJumlahAwal)
+  print("\nJumlah dalam antrian saat ini: ",AkuJumlahAwal)
 
 
   tesCepewu = psutil.cpu_percent(interval=1)
   tesMemri = psutil.virtual_memory()
-  print(f"sebelum mulai sele\nCPU Usage: {tesCepewu}%")
+  print(f"\nkondisi awal batch "+str(batch+1)+ f"\nCPU Usage: {tesCepewu}%")
   print(f"Memory Usage: {tesMemri.percent}% \n")
 
 
-  if cariBanyak >= 10: #starting condtition
+  if AkuJumlahAwal >= 1: #starting condtition
     for printBanyak in cariBanyak:
-      
-      AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-0"}) #normal 2 of 3
-      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-0" }}) #normal
+      AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-2"}) #normal 2 of 3
+      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-2" }}) #normal
       # AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-3"}) #reset run 2 of 3
       # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-3" }}) #reset
+
+
 
       print("\njumlah dalam antrian saat ini: ",AkuJumlahBerjalan)
       print("Current Task: ", printBanyak['pid'])
@@ -173,7 +180,7 @@ def tesInturnul() :
       DBWrite.insert_one(catatanDB)
       
       DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-3" }}) #normal 3 of 3
-      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-0" }}) #reset run 3 of 3
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-2" }}) #reset run 3 of 3
       # replace di DB semula biar ngerjainnya ga loop
       
       print("TASK DONE", printBanyak['pid'])
@@ -181,14 +188,18 @@ def tesInturnul() :
 
       berhitung+=1
 
-      if berhitung >= 15: #stopping condition
-        print("15 antrian pertama selesai") 
+      if berhitung >= 10: #stopping condition
+        print("10 antrian pertama selesai") 
         batch += 1
+        return
+      
+      elif AkuJumlahBerjalan <= 1:
+        print("Antrian kosong")
         return
     
 
   else:
-    print("\nbatch diatas standar, menunggu jadwal berikutnya\n", time.ctime())
+    print("\nAntrian kosong, menunggu jadwal berikutnya\n", time.ctime())
     # scheduler.remove_all_jobs(jobstore=None) #terlalu bahaya
     scheduler.print_jobs()
     return
@@ -200,7 +211,7 @@ def tesInturnul() :
 
 if __name__ == '__main__':
   scheduler = BackgroundScheduler()
-  scheduler.add_job(tesInturnul, 'interval', seconds=20)
+  scheduler.add_job(tesInturnul, 'interval', seconds=30)
   scheduler.print_jobs()
   scheduler.start()
   print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
