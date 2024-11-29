@@ -86,7 +86,7 @@ import psutil
 
 def getDBClient():
                   # linkDB = "mongodb://localhost:27017"
-                  linkDB = "mongodb://192.168.195.245:27017/"
+                  linkDB = "mongodb://192.168.195.245:27017/" #punya anto
                   # linkDB = "mongodb://192.168.195.83:27017/" #punya hafidz
                   # linkDB = "mongodb://192.168.195.241:27017/" #punya naufal
 
@@ -103,7 +103,7 @@ def tesInturnul() :
   global batch
 
   # url = "http://127.0.0.1:8000/trigger_selenium" # uvicorn hafifis:app --reload
-  url = "http://127.0.0.1:8000/trigger-selenium" # uvicorn hafizui:app --reload (lebih baru)
+  url = "http://127.0.0.1:8000/trigger-selenium" # uvicorn hafizui:app --reload (nama link baru)
   # url = "http://192.168.195.83:8000/trigger-selenium" #external hafidz
 
 
@@ -117,20 +117,29 @@ def tesInturnul() :
   # piiCloneDB = dbClient["piiclone"] #deployable
   # DBWrite = piiCloneDB['log_result'] #deployable
 
-  # variabel akuCobaDB nyimpen database akuCoba.
+  # variabel akuCobaDB nyimpen database akuCoba buat nulis paralel.
   # akuCobaDB = dbClient["pii-loggers"]
 
   DBCollect = piiCloneDB['form_penilaian']
 
-  
-  berhitung = 0
-  
-  DBCollect.update_many({"status": "IN PROG 111-2"}, {"$set":{"status":"111-2" }}) #normalisasi form nyangkut
+  # 111-2 gagal 
+  # 111-3 otw kerjain
+  # 111-4 kelar kerjain berhasil
 
-  cariBanyak = DBCollect.find({"status": "111-2"}) #normal 1 of 3
-  AkuJumlahAwal = DBCollect.count_documents({"status": "111-2"}) #normal
-  # cariBanyak = DBCollect.find({"status": "111-3"}) #reset run 1 of 3
-  # AkuJumlahAwal = DBCollect.count_documents({"status": "111-3"}) #reset
+  berhitung = 0
+  # pre update retry nov 28
+  # DBCollect.update_many({"status": "IN PROG 111-3"}, {"$set":{"status":"111-3" }}) #normalisasi form nyangkut
+  
+  # attempt update nov 28
+  normalisasi = DBCollect.count_documents({"status": "111-2"})
+  print("\nForm Nyangkut: ",normalisasi)
+  DBCollect.update_many({"status": "111-2"}, {"$set":{"status":"111-3" }}) #normalisasi form nyangkut
+  
+
+  cariBanyak = DBCollect.find({"status": "111-3"}) #normal 1 of 3
+  AkuJumlahAwal = DBCollect.count_documents({"status": "111-3"}) #normal
+  # cariBanyak = DBCollect.find({"status": "111-4"}) #reset run 1 of 3
+  # AkuJumlahAwal = DBCollect.count_documents({"status": "111-4"}) #reset
   print("\nJumlah dalam antrian saat ini: ",AkuJumlahAwal)
 
 
@@ -142,10 +151,10 @@ def tesInturnul() :
 
   if AkuJumlahAwal >= 1: #starting condtition
     for printBanyak in cariBanyak:
-      AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-2"}) #normal 2 of 3
-      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-2" }}) #normal
-      # AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-3"}) #reset run 2 of 3
-      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-3" }}) #reset
+      AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-3"}) #normal 2 of 3
+      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-3" }}) #normal
+      # AkuJumlahBerjalan = DBCollect.count_documents({"status": "111-4"}) #reset run 2 of 3
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"IN PROG 111-4" }}) #reset
 
 
 
@@ -177,19 +186,27 @@ def tesInturnul() :
           "deskripsi" : printjeson,
           "keterangan" : status_code}
 
-      DBWrite.insert_one(catatanDB)
+      DBWrite.insert_one(catatanDB) # attempt update nov 28
+      if catatanDB['keterangan'] == 200 : # update status db berdasarkan hasil selenium
+        DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-4" }}) #normal 3 of 3
+        # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-3" }}) #reset run 3 of 3
+        print("TASK SUCC", printBanyak['pid'])
+      else:
+         DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-2" }}) #reset run 3 of 3
+         print("TASK FEIL", printBanyak['pid'])
       
-      DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-3" }}) #normal 3 of 3
-      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-2" }}) #reset run 3 of 3
+      # pre update retry nov 28
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-4" }}) #normal 3 of 3
+      # DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-3" }}) #reset run 3 of 3
       # replace di DB semula biar ngerjainnya ga loop
       
-      print("TASK DONE", printBanyak['pid'])
+      # print("TASK DONE", printBanyak['pid'])
       print("COMPLETION TIME:", time.ctime())
 
       berhitung+=1
 
-      if berhitung >= 10: #stopping condition
-        print("10 antrian pertama selesai") 
+      if berhitung >= 14: #stopping condition
+        print("14 antrian pertama selesai") 
         batch += 1
         return
       
@@ -220,8 +237,9 @@ if __name__ == '__main__':
       tesCepewu = psutil.cpu_percent(interval=15)
       tesMemri = psutil.virtual_memory()
       print(f"\nCPU Usage: {tesCepewu}%")
-      print(f"Memory Usage: {tesMemri.percent}% \n")
-      time.sleep(45)          
+      print(f"Memory Usage: {tesMemri.percent}%")
+      print("Util timestamp", time.ctime(), "\n")
+      time.sleep(15)          
   except (KeyboardInterrupt, SystemExit):
     scheduler.shutdown()
 
