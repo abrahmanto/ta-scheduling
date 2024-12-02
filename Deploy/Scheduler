@@ -9,10 +9,6 @@ import psutil
 
 def getDBClient():
                   linkDB = "mongodb://localhost:27017"
-                  # linkDB = "mongodb://192.168.195.245:27017/" #punya anto
-                  # linkDB = "mongodb://192.168.195.83:27017/" #punya hafidz
-                  # linkDB = "mongodb://192.168.195.241:27017/" #punya naufal
-
                   dbClient = MongoClient(linkDB)
                   return dbClient
 
@@ -26,7 +22,6 @@ def tesInturnul() :
   global batch
 
   url = "http://127.0.0.1:8000/trigger-selenium" # uvicorn hafizui:app --reload (nama link baru)
-  # url = "http://192.168.195.83:8000/trigger-selenium" #external hafidz
 
 
   # variabel dbClient nyimpen client balikan dari getDBClient()
