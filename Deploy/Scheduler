@@ -38,14 +38,15 @@ def tesInturnul() :
   DBCollect = piiCloneDB['form_penilaian']
 
   # status formulir
-  # 111-2 gagal 
-  # 111-3 otw kerjain
-  # 111-4 kelar kerjain berhasil
+  # 111-3 gagal 
+  # 111-4 otw kerjain
+  # 111-5 kelar kerjain berhasil
 
   berhitung = 0
   normalisasi = DBCollect.count_documents({"status": "111-2"})
   print("\nForm Nyangkut: ",normalisasi)
-  DBCollect.update_many({"status": "111-2"}, {"$set":{"status":"111-3" }}) #normalisasi form nyangkut
+  DBCollect.update_many({"status": "111-4"}, {"$set":{"status":"111-3" }}) #normalisasi form nyangkut
+  DBCollect.update_many({"status": "IN PROG 111-3"}, {"$set":{"status":"111-3" }})
   
 
   cariBanyak = DBCollect.find({"status": "111-3"})
@@ -97,10 +98,10 @@ def tesInturnul() :
 
       DBWrite.insert_one(catatanDB) # attempt update nov 28
       if catatanDB['keterangan'] == 200 : # update status db berdasarkan hasil selenium
-        DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-4" }})
+        DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-5" }})
         print("SCHEDULING DONE", printBanyak['pid'])
       else:
-         DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-2" }})
+         DBCollect.update_one({'_id':printBanyak['_id']}, {"$set":{"status":"111-4" }})
          print("SCHEDULING FAILED", printBanyak['pid'])
 
       
